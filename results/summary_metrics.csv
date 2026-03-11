@@ -1,0 +1,10 @@
+scenario,availability_percent,data_integrity_percent,energy_efficiency_percent,average_response_time_steps
+baseline,76.33,100.0,87.89,0.0
+fdi_attack,76.33,100.0,86.05,1.31
+dos_drop_attack,76.33,67.67,87.93,1.31
+dos_delay_attack,42.33,99.33,85.76,2.31
+cmd_injection_attack,66.67,100.0,85.79,1.5
+secured_fdi,76.0,0.0,87.99,1.32
+secured_dos_drop,55.33,36.67,72.61,1.73
+secured_dos_delay,50.0,53.67,69.44,1.89
+secured_cmd_injection,49.67,54.67,71.35,1.94
