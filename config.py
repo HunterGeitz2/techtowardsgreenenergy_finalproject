@@ -1,0 +1,49 @@
+SIMULATION_STEPS = 300
+TIME_STEP = 1.0
+
+# Grid nominal values
+NOMINAL_VOLTAGE = 1.0        # per unit
+NOMINAL_FREQUENCY = 50.0     # Hz
+
+# Renewable generation
+SOLAR_BASE = 30.0
+WIND_BASE = 20.0
+GEN_NOISE = 3.0
+
+# Load demand
+LOAD_BASE = 45.0
+LOAD_VARIATION = 10.0
+LOAD_NOISE = 2.0
+
+# Controller and reserve settings
+RESERVE_MAX = 20.0
+STORAGE_MAX = 15.0
+MAX_LOAD_SHED = 10.0
+
+# Stability limits
+VOLTAGE_MIN = 0.95
+VOLTAGE_MAX = 1.05
+FREQUENCY_MIN = 49.5
+FREQUENCY_MAX = 50.5
+
+# Attack settings
+FDI_BIAS_MIN = 0.10
+FDI_BIAS_MAX = 0.15
+
+DOS_DROP_RATE = 0.30
+DOS_DELAY_STEPS = 2
+
+CMD_ATTACK_START = 120
+CMD_ATTACK_END = 150
+CMD_MALICIOUS_SCALE = 0.0
+
+# Security settings
+AUTH_TOKEN = "trusted_controller"
+INTEGRITY_SECRET = "smartgrid_secret"
+
+ANOMALY_LOAD_JUMP = 0.15
+ANOMALY_FREQ_DEV = 0.4
+ANOMALY_VOLT_DEV = 0.04
+
+# Output paths
+OUTPUT_DIR = "results"
