@@ -1,14 +1,28 @@
-from dataclasses import asdict
-
 import attacks
 import config
 import metrics
 import security
-from models import CommunicationLayer, Controller, LoadModel, RenewableGenerator, SensorModel, SmartGrid
-from utils import plot_metric_comparison, plot_timeseries, save_logs_to_csv, save_metrics_to_csv
+from models import (
+    CommunicationLayer,
+    Controller,
+    LoadModel,
+    RenewableGenerator,
+    SensorModel,
+    SmartGrid,
+)
+from utils import (
+    plot_metric_comparison,
+    plot_timeseries,
+    save_logs_to_csv,
+    save_metrics_to_csv,
+)
 
 
-def run_simulation(scenario_name: str, attack_type: str = "none", security_enabled: bool = False) -> list[dict]:
+def run_simulation(
+    scenario_name: str,
+    attack_type: str = "none",
+    security_enabled: bool = False,
+) -> list[dict]:
     generator = RenewableGenerator()
     load_model = LoadModel()
     sensors = SensorModel()
@@ -24,7 +38,6 @@ def run_simulation(scenario_name: str, attack_type: str = "none", security_enabl
         solar, wind, total_generation = generator.total_output(t)
         true_load = load_model.get_load(t)
 
-        # Initial no-action state to generate true measurements
         base_control = {
             "reserve_dispatch": 0.0,
             "storage_dispatch": 0.0,
@@ -40,9 +53,8 @@ def run_simulation(scenario_name: str, attack_type: str = "none", security_enabl
 
         transmitted_packet = comms.transmit(sensor_packet)
 
-        modified_control = None
         if attack_type in ("fdi", "dos_drop", "dos_delay"):
-            transmitted_packet, modified_control = attacks.apply_attack(
+            transmitted_packet, _ = attacks.apply_attack(
                 attack_type=attack_type,
                 sensor_data=transmitted_packet,
                 control_action=None,
@@ -50,41 +62,63 @@ def run_simulation(scenario_name: str, attack_type: str = "none", security_enabl
                 comm_layer=comms,
             )
 
-        integrity_ok = True
+        # ----- New metric flags -----
+        packet_received = transmitted_packet is not None
+        packet_tampered = False
+        controller_data_trusted = False
+
         anomaly_detected = False
         auth_ok = True
         ranges_ok = True
+        used_fallback = False
+
+        # Detect whether the incoming packet was tampered with
+        if packet_received:
+            if attack_type == "fdi":
+                # FDI changes sensor values directly
+                packet_tampered = abs(transmitted_packet["load"] - true_load) > 1e-6
+            else:
+                packet_tampered = False
 
         if security_enabled:
-            if transmitted_packet is None:
-                integrity_ok = False
-            else:
-                integrity_ok = security.verify_message(transmitted_packet)
+            incoming_packet_valid = False
+
+            if transmitted_packet is not None:
+                checksum_ok = security.verify_message(transmitted_packet)
                 ranges_ok = security.validate_sensor_ranges(transmitted_packet)
                 anomaly_detected = detector.detect(transmitted_packet)
 
-            if not integrity_ok or not ranges_ok or anomaly_detected:
-                transmitted_packet = security.fallback_sensor_packet(last_safe_packet, None)
+                incoming_packet_valid = checksum_ok and ranges_ok and (not anomaly_detected)
 
-        if transmitted_packet is None:
-            transmitted_packet = last_safe_packet
+            if incoming_packet_valid:
+                controller_packet = transmitted_packet
+                controller_data_trusted = True
+            else:
+                controller_packet = security.fallback_sensor_packet(last_safe_packet, None)
+                used_fallback = controller_packet is not None
+                controller_data_trusted = used_fallback
+        else:
+            # No security: controller trusts whatever arrives
+            controller_packet = transmitted_packet
+            controller_data_trusted = packet_received and (not packet_tampered)
 
-        if transmitted_packet is None:
-            transmitted_packet = {
+        if controller_packet is None:
+            controller_packet = {
                 "time_step": t,
                 "load": true_load,
                 "generation": total_generation,
                 "voltage": config.NOMINAL_VOLTAGE,
                 "frequency": config.NOMINAL_FREQUENCY,
             }
-            integrity_ok = False
+            used_fallback = True
+            controller_data_trusted = False
 
-        control_action = controller.compute_control(transmitted_packet)
+        control_action = controller.compute_control(controller_packet)
 
         if attack_type == "cmd_injection":
             _, control_action = attacks.apply_attack(
                 attack_type=attack_type,
-                sensor_data=transmitted_packet,
+                sensor_data=controller_packet,
                 control_action=control_action,
                 t=t,
                 comm_layer=comms,
@@ -93,13 +127,14 @@ def run_simulation(scenario_name: str, attack_type: str = "none", security_enabl
         if security_enabled:
             auth_ok = security.authenticate_command(control_action)
             command_ranges_ok = security.validate_command_ranges(control_action)
+
             if not auth_ok or not command_ranges_ok:
                 control_action = security.fallback_command()
 
         final_state = grid.update_state(t, solar, wind, true_load, control_action)
 
-        if security_enabled and integrity_ok and ranges_ok and not anomaly_detected:
-            last_safe_packet = transmitted_packet.copy()
+        if security_enabled and controller_data_trusted and not used_fallback:
+            last_safe_packet = controller_packet.copy()
 
         log_row = {
             "time_step": t,
@@ -110,7 +145,7 @@ def run_simulation(scenario_name: str, attack_type: str = "none", security_enabl
             "wind_generation": final_state.wind_generation,
             "total_generation": final_state.total_generation,
             "true_load": final_state.true_load,
-            "reported_load": transmitted_packet["load"],
+            "reported_load": controller_packet["load"],
             "served_load": final_state.served_load,
             "unmet_demand": final_state.unmet_demand,
             "reserve_used": final_state.reserve_used,
@@ -119,7 +154,10 @@ def run_simulation(scenario_name: str, attack_type: str = "none", security_enabl
             "voltage": final_state.voltage,
             "frequency": final_state.frequency,
             "imbalance": final_state.imbalance,
-            "data_integrity_ok": integrity_ok,
+            "packet_received": packet_received,
+            "packet_tampered": packet_tampered,
+            "controller_data_trusted": controller_data_trusted,
+            "used_fallback": used_fallback,
             "anomaly_detected": anomaly_detected,
             "command_authenticated": auth_ok,
         }

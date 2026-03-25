@@ -6,7 +6,14 @@ import config
 
 def sign_message(packet: dict) -> dict:
     packet = packet.copy()
-    payload = f"{packet.get('time_step')}|{packet.get('load')}|{packet.get('generation')}|{packet.get('voltage')}|{packet.get('frequency')}|{config.INTEGRITY_SECRET}"
+    payload = (
+        f"{packet.get('time_step')}|"
+        f"{packet.get('load')}|"
+        f"{packet.get('generation')}|"
+        f"{packet.get('voltage')}|"
+        f"{packet.get('frequency')}|"
+        f"{config.INTEGRITY_SECRET}"
+    )
     packet["checksum"] = hashlib.sha256(payload.encode()).hexdigest()
     return packet
 
@@ -15,7 +22,14 @@ def verify_message(packet: dict) -> bool:
     if packet is None or "checksum" not in packet:
         return False
 
-    payload = f"{packet.get('time_step')}|{packet.get('load')}|{packet.get('generation')}|{packet.get('voltage')}|{packet.get('frequency')}|{config.INTEGRITY_SECRET}"
+    payload = (
+        f"{packet.get('time_step')}|"
+        f"{packet.get('load')}|"
+        f"{packet.get('generation')}|"
+        f"{packet.get('voltage')}|"
+        f"{packet.get('frequency')}|"
+        f"{config.INTEGRITY_SECRET}"
+    )
     expected = hashlib.sha256(payload.encode()).hexdigest()
     return expected == packet["checksum"]
 

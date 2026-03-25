@@ -1,6 +1,6 @@
 import math
 import random
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 import config
 
@@ -30,11 +30,17 @@ class RenewableGenerator:
 
     def solar_output(self, t: int) -> float:
         day_profile = max(0.0, math.sin((t / 60.0) * math.pi))
-        return max(0.0, self.solar_base * day_profile + random.uniform(-self.noise, self.noise))
+        return max(
+            0.0,
+            self.solar_base * day_profile + random.uniform(-self.noise, self.noise),
+        )
 
     def wind_output(self, t: int) -> float:
         variation = 0.7 + 0.3 * math.sin(t / 20.0)
-        return max(0.0, self.wind_base * variation + random.uniform(-self.noise, self.noise))
+        return max(
+            0.0,
+            self.wind_base * variation + random.uniform(-self.noise, self.noise),
+        )
 
     def total_output(self, t: int) -> tuple[float, float, float]:
         solar = self.solar_output(t)

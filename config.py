@@ -2,8 +2,8 @@ SIMULATION_STEPS = 300
 TIME_STEP = 1.0
 
 # Grid nominal values
-NOMINAL_VOLTAGE = 1.0        # per unit
-NOMINAL_FREQUENCY = 50.0     # Hz
+NOMINAL_VOLTAGE = 1.0
+NOMINAL_FREQUENCY = 50.0
 
 # Renewable generation
 SOLAR_BASE = 30.0
@@ -45,5 +45,5 @@ ANOMALY_LOAD_JUMP = 0.15
 ANOMALY_FREQ_DEV = 0.4
 ANOMALY_VOLT_DEV = 0.04
 
-# Output paths
+# Output
 OUTPUT_DIR = "results"

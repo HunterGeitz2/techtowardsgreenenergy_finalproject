@@ -83,11 +83,13 @@ def plot_metric_comparison(metrics_rows: list[dict]):
     df = pd.DataFrame(metrics_rows)
 
     metric_names = [
-        "availability_percent",
-        "data_integrity_percent",
-        "energy_efficiency_percent",
-        "average_response_time_steps",
-    ]
+    "availability_percent",
+    "data_availability_percent",
+    "incoming_data_integrity_percent",
+    "trusted_control_data_percent",
+    "energy_efficiency_percent",
+    "average_response_time_steps",
+]
 
     for metric in metric_names:
         plt.figure(figsize=(10, 5))
